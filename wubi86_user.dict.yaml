@@ -24,3 +24,5 @@ encoder:
     - length_in_range: [4, 10]
       formula: "AaBaCaZa"
 ...
+
+嗯嗯	klkl	10
