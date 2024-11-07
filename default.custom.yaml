@@ -1,0 +1,13 @@
+customization:
+  distribution_code_name: Weasel
+  distribution_version: 0.16.3
+  generator: "Rime::SwitcherSettings"
+  modified_time: "Sun Nov  3 16:09:22 2024"
+  rime_version: 1.11.2
+patch:
+  schema_list:
+    - {schema: pinyin_simp}
+    - {schema: wubi86}
+  "switcher/hotkeys":
+    - "Control+grave"              #control+"~"调出输入法菜单
+  "menu/page_size": 3            #候选项数目
