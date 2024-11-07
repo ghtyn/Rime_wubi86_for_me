@@ -1,4 +1,5 @@
 #**Rime(小狼毫 )自用配置**
+
 **词库：**
   * 主词库来自：[myshiqiqi/rime-wubi]([url](https://github.com/myshiqiqi/rime-wubi))；
   * wubi86_user.dict.yaml：为自定义词库。
