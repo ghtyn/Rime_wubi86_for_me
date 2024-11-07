@@ -9,8 +9,8 @@
   - 下载仓库中所有文件放入用户文件夹
 
 **文件说明：**
-
-    * installation.yaml: 同步数据设定文件，需要网盘配合实现多设备同步；    
+  
+  * installation.yaml: 同步数据设定文件，需要网盘配合实现多设备同步；< br >
     同步目录 → sync_dir: "D:\\OneDrive\\Rime_userdata"； 
     多设备命名 → installation_id: "XXX"。
   * rime.lua: 输出日期时间脚本，这个功能是从[ KyleBing/rime-wubi86-jidian ](https://github.com/KyleBing/rime-wubi86-jidian)抄过来的。 
