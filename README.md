@@ -3,7 +3,7 @@
 **词库：**
   * 主词库来自：[myshiqiqi/rime-wubi]([url](https://github.com/myshiqiqi/rime-wubi))；
   * wubi86_user.dict.yaml：为自定义词库。[Enter]
-  * 
+    
 **使用说明：**
 
   - 下载仓库中所有文件放入用户文件夹
