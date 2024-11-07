@@ -9,7 +9,7 @@ patch:
   style/inline_preedit: true                   # 內嵌編碼（僅支持TSF）
   style/display_tray_icon: false               # 顯示托盤圖標
   style/color_scheme: Blue                     # 主题name
-  style/layout/border_width: 1.5               #边框宽度；又名 border
+  style/layout/border_width: 2                 #边框宽度；又名 border
   style/layout/candidate_spacing: 18           #候选项之间的间距
   style/layout/margin_x: 7                     #候选框左右边距
   style/layout/margin_y: 7                     #候选框上下边距
