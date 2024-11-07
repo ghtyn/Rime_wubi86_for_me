@@ -3,9 +3,12 @@
 **词库：**
   * 主词库来自：[myshiqiqi/rime-wubi]([url](https://github.com/myshiqiqi/rime-wubi))；
   * wubi86_user.dict.yaml：为自定义词库。
+
 **使用说明：**
   - 下载仓库中所有文件放入用户文件夹
+
 **文件说明：**
+
   * **installation.yaml:**同步数据设定文件，需要网盘配合实现多设备同步；
     同步目录 → sync_dir: "D:\\OneDrive\\Rime_userdata"；
     多设备命名 → installation_id: "XXX"。
