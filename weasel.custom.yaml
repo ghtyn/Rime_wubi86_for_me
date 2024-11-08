@@ -74,7 +74,7 @@ patch:
       nextpage_color: 0x000000	#编码区域向下翻页符号颜色
 
     Blue:
-      name: 蓝色海洋
+      name: Blue
       author: Ragm
       back_color: 0xF9F9F9	#窗口背景色
       shadow_color: 0xEBEBEB	#窗口阴影色，默认全透明（无阴影）
