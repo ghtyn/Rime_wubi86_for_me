@@ -1,0 +1,59 @@
+patch:
+
+  speller/max_code_length: 4
+  speller/auto_select: true
+
+  simplifier:
+    opencc_config: s2t.json
+    option_name: zh_trad
+
+  switches:
+    - name: ascii_mode
+      reset: 0
+      states: [ 中, 西 ]
+    - name: full_shape
+      states: [ 半, 全 ]
+    - name: extended_charset
+      states: [ 常, 增 ]
+    - name: ascii_punct
+      states: [ 。, ． ]
+    - name: zh_trad
+      reset: 0
+      states: ["汉", "漢"]
+    - name: emoji
+      states: [ 💀, 😄 ]
+      reset: 1
+  engine/filters:
+    # OpenCC
+    - simplifier                        #将码表中繁体中文转换为简体中文
+    - uniquifier                        #过滤重复项
+    - simplifier@emoji                  # Emoji
+
+  engine/translators:
+    - punct_translator
+    - reverse_lookup_translator
+    - table_translator
+    - lua_translator@date_translator    # 自定义系统变量输出 
+
+
+  emoji:
+    option_name: emoji
+    opencc_config: emoji.json
+    inherit_comment: false  # 在 corrector.lua 及反查中，emoji 返回空注释
+
+  translator/dictionary: wubi86_user          #方案选择
+  translator/enable_sentence: false      #关闭句子模式
+  translator/enable_user_dict: false     #关闭自造词
+
+#  translator/enable_completion: false    #关闭编码自动提示功能
+
+
+  key_binder:
+    import_preset: default
+    bindings:
+     - {accept: semicolon, send: 2, when: has_menu} #分號選第二重碼
+     - {accept: apostrophe, send: 3, when: has_menu} #引號選第三重碼
+     - {accept: bracketleft, send: Page_Up, when: paging}   #使用[]对候选字翻页
+     - {accept: bracketright, send: Page_Down, when: has_menu}  #使用[]对候选字翻页
+
+
