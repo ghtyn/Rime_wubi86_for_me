@@ -19,5 +19,4 @@
          time 输出时间，格式: 10:00 10:000    
          week 输出星期，格式: 周四 星期四    
          month 输出月份，格式: August Aug    
-  * 支持大写数字输入：壹贰叁肆伍陆
-    numbers.schema.yaml来自 [KyleBing/rime-wubi86-jidian](https://github.com/KyleBing/rime-wubi86-jidian?tab=readme-ov-file)。
+  * 支持大写数字输入：numbers.schema.yaml来自 [KyleBing/rime-wubi86-jidian](https://github.com/KyleBing/rime-wubi86-jidian?tab=readme-ov-file)。
