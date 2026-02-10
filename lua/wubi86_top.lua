@@ -3,10 +3,8 @@ local state = { pending_text = "", needs_fix = false }
 
 -- 1. 配置区：一简映射
 local YIJIAN = {
-    g="一", f="地", d="在", s="要", a="工", 
-    h="上", j="是", k="中", l="国", m="同", 
-    n="民", b="了", v="发", c="以", x="经", 
-    t="和", r="的", e="有", w="人", q="我", 
+    g="一", f="地", d="在", s="要", a="工", h="上", j="是", k="中", l="国", m="同", 
+    n="民", b="了", v="发", c="以", x="经", t="和", r="的", e="有", w="人", q="我", 
     y="主", u="产", i="不", o="为", p="这"
 }
 
@@ -83,6 +81,11 @@ function processor(key, env)
 
     -- 【置顶逻辑】
     if key_repr == cache.pin_key then
+        -- 核心逻辑：如果当前选中的词正是该编码的一简字，则直接返回，不执行写入 txt 的操作
+        if #context.input == 1 and YIJIAN[context.input] == cand.text then
+            return 1 
+        end
+
         local code, uk = context.input, cand.text .. context.input
         state.pending_text, state.needs_fix = cand.text, true 
         
@@ -105,10 +108,9 @@ function processor(key, env)
     
     -- 【屏蔽逻辑】
     elseif key_repr == cache.del_key then
-        -- 核心修复：防止一简被屏蔽
-        -- 如果当前输入码长度为 1，且当前选中的字是一简表里的字，则直接跳过屏蔽逻辑
+        -- 一简永远不能被屏蔽
         if #context.input == 1 and YIJIAN[context.input] == cand.text then
-            return 1 -- 消耗掉按键，但不执行任何操作
+            return 1 
         end
 
         local uk = cand.text .. context.input
@@ -130,8 +132,8 @@ function filter(input, env)
 
     for cand in input:iter() do
         local t, pk = cand.text, cand.text .. code
-        -- 过滤被屏蔽的词，但一简在 processor 层已经保护，这里正常遍历
         if not cache.d_set[pk] then
+            -- 识别一简字
             if is_yijian and t == YIJIAN[code] then 
                 yijian_cand = cand
             elseif p_texts and cache.p_set[pk] then 
@@ -143,15 +145,15 @@ function filter(input, env)
         end
     end
 
-    -- 1. 输出一简
+    -- 1. 输出一简：确保它永远排在第一位
     if yijian_cand then yield(yijian_cand); count = count + 1 end 
     
-    -- 2. 输出置顶词 (净化处理)
+    -- 2. 输出其他置顶词
     if p_texts then
         for i = 1, #p_texts do
             local t = p_texts[i]
             local co = pinned_map[t .. code]
-            -- 如果该置顶词恰好是一简（且当前是一简编码），在一简阶段已输出，此处避重
+            -- 排除已在一简阶段输出的重复词
             if co and not (is_yijian and t == YIJIAN[code]) then 
                 yield(Candidate(co.type, co.start, co._end, t, cache.mark))
                 count = count + 1 
@@ -159,7 +161,7 @@ function filter(input, env)
         end
     end
     
-    -- 3. 输出普通词
+    -- 3. 输出普通词及自定义短语
     for i = 1, #others do yield(others[i]); count = count + 1 end 
     for cand in input:iter() do yield(cand) end
 
