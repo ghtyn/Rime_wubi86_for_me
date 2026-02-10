@@ -61,10 +61,12 @@ patch:
     inherit_comment: false
 
   wubi86_top:
-    mark: " ᵀᴼᴾ"                # 置顶标记
+    mark: "⠁"                # 置顶标记
     max_scan: 30                # 扫描深度
     pin_key: "Control+t"        # 置顶/取消置顶快捷键
     del_key: "Control+d"        # 屏蔽词条快捷键
+
+
 
   # --- 快捷键变量定义与绑定 ---
   key_binder/+:
