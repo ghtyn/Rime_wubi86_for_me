@@ -1,7 +1,7 @@
 local schema_caches = {}
 local state = { pending_text = "", needs_fix = false }
 
--- 1. 配置区：一简映射
+-- 1. 核心保护区：一简映射
 local YIJIAN = {
     g="一", f="地", d="在", s="要", a="工", 
     h="上", j="是", k="中", l="国", m="同", 
@@ -15,6 +15,7 @@ local function get_cache(env)
     if not schema_caches[sid] then
         local config = env.engine.schema.config
         local u_dir  = rime_api.get_user_data_dir()
+        -- 优先从补丁文件中读取配置，若无则使用默认值
         schema_caches[sid] = { 
             p_list = {}, p_set = {}, d_set = {}, p_index = {}, loaded = false,
             mark     = config:get_string("wubi86_top/mark") or " ᵀᴼᴾ",
@@ -81,13 +82,12 @@ function processor(key, env)
     if not cand then return 2 end
     local key_repr = key:repr()
 
-    -- 【置顶逻辑修正】
+    -- 置顶操作
     if key_repr == cache.pin_key then
         local code, uk = context.input, cand.text .. context.input
         state.pending_text, state.needs_fix = cand.text, true 
         
         if cache.p_set[uk] then
-            -- 取消置顶
             cache.p_set[uk] = nil
             for i = #cache.p_list, 1, -1 do
                 if cache.p_list[i].text == cand.text and cache.p_list[i].code == code then table.remove(cache.p_list, i); break end 
@@ -95,7 +95,6 @@ function processor(key, env)
             local ilist = cache.p_index[code]
             for i = #ilist, 1, -1 do if ilist[i] == cand.text then table.remove(ilist, i); break end end
         else
-            -- 【核心变化】：加入置顶名单，不存储原词条自带的注释(comment)
             table.insert(cache.p_list, {text = cand.text, code = code})
             if not cache.p_index[code] then cache.p_index[code] = {} end
             table.insert(cache.p_index[code], cand.text)
@@ -105,8 +104,9 @@ function processor(key, env)
         context:refresh_non_confirmed_composition()
         return 1
     
-    -- 【屏蔽逻辑】
+    -- 屏蔽操作（保护一简）
     elseif key_repr == cache.del_key then
+        if #context.input == 1 and YIJIAN[context.input] == cand.text then return 1 end
         local uk = cand.text .. context.input
         if cache.p_set[uk] then return 1 end 
         cache.d_set[uk] = true
@@ -122,41 +122,56 @@ function filter(input, env)
     local cache, context = get_cache(env), env.engine.context
     local code = context.input
     local pinned_map, others, yijian_cand, count = {}, {}, nil, 0
-    local is_yijian, p_texts = (#code == 1 and YIJIAN[code]), cache.p_index[code]
+    local is_yijian_code = (#code == 1)
+    local p_texts = cache.p_index[code]
 
+    -- 遍历并分类候选词
     for cand in input:iter() do
         local t, pk = cand.text, cand.text .. code
-        if not cache.d_set[pk] then
-            if is_yijian and t == YIJIAN[code] then 
-                yijian_cand = cand
-            elseif p_texts and cache.p_set[pk] then 
+        local is_this_yijian = is_yijian_code and (t == YIJIAN[code])
+
+        if is_this_yijian then
+            yijian_cand = cand
+        elseif not cache.d_set[pk] then
+            if p_texts and cache.p_set[pk] then 
                 pinned_map[pk] = cand
             else
                 others[#others + 1] = cand
+                -- 这里应用补丁中的 max_scan
                 if #others >= cache.max_scan then break end
             end
         end
     end
 
     -- 1. 输出一简
-    if yijian_cand then yield(yijian_cand); count = count + 1 end 
+    if yijian_cand then 
+        yield(yijian_cand)
+        count = count + 1 
+    end 
     
-    -- 2. 输出置顶词 (核心改进：不显示原词自带标记，只显示你定义的 TOP 标记)
+    -- 2. 输出置顶词（排除已作为一简输出的重复词）
     if p_texts then
         for i = 1, #p_texts do
             local t = p_texts[i]
-            local co = pinned_map[t .. code]
-            if co then 
-                -- 这里 Candidate 的第 5 个参数不再合并 co.comment，直接用 cache.mark
-                -- 这样即使原词带有 "~" 或 "*"，在这里都会被你的 " ᵀᴼᴾ" 替换掉
-                yield(Candidate(co.type, co.start, co._end, t, cache.mark))
-                count = count + 1 
+            if not (is_yijian_code and t == YIJIAN[code]) then
+                local co = pinned_map[t .. code]
+                if co then 
+                    -- 使用补丁中的 mark
+                    local new_comment = (co.comment:gsub("[~%*]", "")) .. cache.mark
+                    yield(Candidate(co.type, co.start, co._end, t, new_comment))
+                    count = count + 1 
+                end
             end
         end
     end
     
-    -- 3. 输出普通词
-    for i = 1, #others do yield(others[i]); count = count + 1 end 
+    -- 3. 输出其他普通词
+    for i = 1, #others do 
+        yield(others[i])
+        count = count + 1 
+    end 
+
+    -- 补全剩余逻辑
     for cand in input:iter() do yield(cand) end
 
     if state.needs_fix then
@@ -168,6 +183,5 @@ function filter(input, env)
         state.needs_fix = false
     end
 end
-
 
 return { processor = processor, filter = filter }

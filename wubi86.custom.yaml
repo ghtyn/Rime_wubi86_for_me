@@ -36,8 +36,8 @@ patch:
   engine/processors/@before 0: "lua_processor@wubi86_top_processor"
 
   engine/filters:
-    - lua_filter@wubi86_top_filter
     - simplifier            # 简繁转换
+    - lua_filter@wubi86_top_filter
     - simplifier@emoji      # Emoji转换
     - uniquifier            # 过滤重复项
 
