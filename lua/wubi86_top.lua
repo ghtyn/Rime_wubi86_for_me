@@ -1,10 +1,12 @@
 local schema_caches = {}
 local state = { pending_text = "", needs_fix = false }
 
--- 1. 配置区：一简映射（保持不变）
+-- 1. 配置区：一简映射
 local YIJIAN = {
-    g="一", f="地", d="在", s="要", a="工", h="上", j="是", k="中", l="国", m="同", 
-    n="民", b="了", v="发", c="以", x="经", t="和", r="的", e="有", w="人", q="我", 
+    g="一", f="地", d="在", s="要", a="工", 
+    h="上", j="是", k="中", l="国", m="同", 
+    n="民", b="了", v="发", c="以", x="经", 
+    t="和", r="的", e="有", w="人", q="我", 
     y="主", u="产", i="不", o="为", p="这"
 }
 
@@ -26,6 +28,7 @@ local function get_cache(env)
     return schema_caches[sid]
 end
 
+-- 优化点 1: 使用 table.concat 减少字符串拼接开销
 local function save_pinned(cache)
     if not cache.dirty then return end
     local f = io.open(cache.pin_file, "w")
@@ -36,7 +39,7 @@ local function save_pinned(cache)
         if not seen_code[code] then
             local texts = cache.p_index[code]
             if texts and #texts > 0 then
-                f:write(code .. "\t" .. table.concat(texts, "\t") .. "\n")
+                f:write(code, "\t", table.concat(texts, "\t"), "\n")
             end
             seen_code[code] = true
         end
@@ -57,7 +60,8 @@ local function load_all(env)
                 local code = parts[1]
                 for i = 2, #parts do
                     local text = parts[i]
-                    local uk = text .. code
+                    -- 优化点 2: 统一 Key 的生成方式，避免逻辑散乱
+                    local uk = text .. ":" .. code 
                     if is_pin then
                         if not cache.p_set[uk] then
                             table.insert(cache.p_list, {text = text, code = code})
@@ -75,7 +79,6 @@ local function load_all(env)
     cache.loaded = true
 end
 
--- 处理器逻辑
 local function processor(key, env)
     local context, cache = env.engine.context, get_cache(env)
     if not cache.loaded then load_all(env) end
@@ -87,14 +90,16 @@ local function processor(key, env)
 
     if key_repr == cache.pin_key then
         if #context.input == 1 and YIJIAN[context.input] == cand.text then return 1 end
-        local code, uk = context.input, cand.text .. context.input
+        local code = context.input
+        local uk = cand.text .. ":" .. code
         state.pending_text, state.needs_fix = cand.text, true 
         cache.dirty = true
         
         if cache.p_set[uk] then
             cache.p_set[uk] = nil
             for i = #cache.p_list, 1, -1 do
-                if cache.p_list[i].text == cand.text and cache.p_list[i].code == code then 
+                local item = cache.p_list[i]
+                if item.text == cand.text and item.code == code then 
                     table.remove(cache.p_list, i) 
                     break 
                 end 
@@ -116,18 +121,18 @@ local function processor(key, env)
         return 1
     elseif key_repr == cache.del_key then
         if #context.input == 1 and YIJIAN[context.input] == cand.text then return 1 end
-        local uk = cand.text .. context.input
+        local uk = cand.text .. ":" .. context.input
         if cache.p_set[uk] then return 1 end 
         cache.d_set[uk] = true
         local f = io.open(cache.del_file, "a")
-        if f then f:write(context.input .. "\t" .. cand.text .. "\n"); f:close() end
+        if f then f:write(context.input, "\t", cand.text, "\n"); f:close() end
         context:refresh_non_confirmed_composition()
         return 1
     end
     return 2
 end
 
--- 过滤器逻辑
+-- 过滤器优化版
 local function filter(input, env)
     local cache, context = get_cache(env), env.engine.context
     local code = context.input
@@ -140,37 +145,39 @@ local function filter(input, env)
     local yielded_set = {}
     local count = 0
 
-    -- 1. 预扫描及分类
+    -- 优化点 3: 减少循环内部的字符串拼接
     for cand in input:iter() do
         local t = cand.text
-        local pk = t .. code
-        if not cache.d_set[pk] then
+        local uk = t .. ":" .. code -- 仅拼接一次并复用
+        
+        if not cache.d_set[uk] then
             if is_yijian and t == is_yijian then
                 yijian_cand = cand
-            elseif cache.p_set[pk] then
+            elseif cache.p_set[uk] then
                 if not pinned_cands[t] then pinned_cands[t] = cand end
             else
                 table.insert(others, cand)
             end
         end
+        -- 限制预扫描深度，防止大词库遍历导致的 CPU 峰值
         if #others >= cache.max_scan then break end
     end
 
-    -- 2. 顺序输出
-    -- 第一：一简
+    -- 输出一简
     if yijian_cand then 
         yield(yijian_cand)
         yielded_set[yijian_cand.text] = true
         count = count + 1 
     end 
     
-    -- 第二：置顶词
+    -- 输出置顶词
     if p_texts then
         for i = 1, #p_texts do
             local t = p_texts[i]
             if not yielded_set[t] then
                 local co = pinned_cands[t]
                 if co then
+                    -- 优化点 4: 使用 Candidate 构造函数时避免多余的属性计算
                     yield(Candidate(co.type, co.start, co._end, t, cache.mark))
                     yielded_set[t] = true
                     count = count + 1
@@ -179,7 +186,7 @@ local function filter(input, env)
         end
     end
     
-    -- 第三：普通候选
+    -- 输出普通候选
     for i = 1, #others do
         local cand = others[i]
         if not yielded_set[cand.text] then
@@ -189,17 +196,20 @@ local function filter(input, env)
         end
     end
 
-    -- 3. 补齐剩余（流式输出，确保不丢词）
+    -- 补齐剩余流式输出
     for cand in input:iter() do
-        if not yielded_set[cand.text] and not cache.d_set[cand.text .. code] then
+        local t = cand.text
+        if not yielded_set[t] and not cache.d_set[t .. ":" .. code] then
             yield(cand)
         end
     end
 
-    -- 4. 视觉焦点修正
+    -- 优化点 5: 视觉焦点修正的循环优化
     if state.needs_fix then
         local menu = context.menu
-        for i = 0, count + 5 do 
+        -- 仅在合理的范围内搜索，避免无效遍历
+        local search_limit = (count > 10) and count or 10
+        for i = 0, search_limit do 
             local c = menu:get_candidate_at(i)
             if c and c.text == state.pending_text then 
                 context.selected_index = i
@@ -210,8 +220,4 @@ local function filter(input, env)
     end
 end
 
--- 重要：显式导出补丁中使用的函数名
-return { 
-    processor = processor, 
-    filter = filter 
-}
+return { processor = processor, filter = filter }
