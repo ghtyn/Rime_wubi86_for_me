@@ -43,6 +43,16 @@ patch:
 
   engine/translators/+:
     - "lua_translator@date_translator"
+    - table_translator@custom_phrase
+
+  # --- 自定义短句设置 ---
+  custom_phrase:
+    dictionary: ""
+    user_dict: custom_phrase  # 对应文件名（不含扩展名）
+    db_class: stabledb
+    enable_completion: false
+    enable_sentence: false
+    initial_quality: 1000     # 给一个较高的基础权重
 
   # --- Emoji 设置 ---
   emoji:
