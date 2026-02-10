@@ -2,7 +2,6 @@
 
 **词库：**
   * 主词库来自：[myshiqiqi/rime-wubi](https://github.com/myshiqiqi/rime-wubi)；
-  * wubi86_user.dict.yaml：为自定义词库。
     
 **使用说明：**
 
