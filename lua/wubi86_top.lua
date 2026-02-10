@@ -1,7 +1,7 @@
 local schema_caches = {}
 local state = { pending_text = "", needs_fix = false }
 
--- 1. 配置区：一简映射
+-- 1. 配置区：一简映射（保持不变）
 local YIJIAN = {
     g="一", f="地", d="在", s="要", a="工", h="上", j="是", k="中", l="国", m="同", 
     n="民", b="了", v="发", c="以", x="经", t="和", r="的", e="有", w="人", q="我", 
@@ -14,7 +14,7 @@ local function get_cache(env)
         local config = env.engine.schema.config
         local u_dir  = rime_api.get_user_data_dir()
         schema_caches[sid] = { 
-            p_list = {}, p_set = {}, d_set = {}, p_index = {}, loaded = false,
+            p_list = {}, p_set = {}, d_set = {}, p_index = {}, loaded = false, dirty = false,
             mark     = config:get_string("wubi86_top/mark") or " ᵀᴼᴾ",
             max_scan = config:get_int("wubi86_top/max_scan") or 30,
             pin_key  = config:get_string("wubi86_top/pin_key") or "Control+t",
@@ -27,20 +27,22 @@ local function get_cache(env)
 end
 
 local function save_pinned(cache)
+    if not cache.dirty then return end
     local f = io.open(cache.pin_file, "w")
     if not f then return end
-    local seen = {}
+    local seen_code = {}
     for i = 1, #cache.p_list do
         local code = cache.p_list[i].code
-        if not seen[code] then
-            local row = { code }
+        if not seen_code[code] then
             local texts = cache.p_index[code]
-            for j = 1, #texts do table.insert(row, texts[j]) end
-            f:write(table.concat(row, "\t") .. "\n")
-            seen[code] = true
+            if texts and #texts > 0 then
+                f:write(code .. "\t" .. table.concat(texts, "\t") .. "\n")
+            end
+            seen_code[code] = true
         end
     end
     f:close()
+    cache.dirty = false
 end
 
 local function load_all(env)
@@ -55,12 +57,15 @@ local function load_all(env)
                 local code = parts[1]
                 for i = 2, #parts do
                     local text = parts[i]
+                    local uk = text .. code
                     if is_pin then
-                        table.insert(cache.p_list, {text = text, code = code})
-                        if not cache.p_index[code] then cache.p_index[code] = {} end
-                        table.insert(cache.p_index[code], text)
-                        cache.p_set[text .. code] = true
-                    else cache.d_set[text .. code] = true end
+                        if not cache.p_set[uk] then
+                            table.insert(cache.p_list, {text = text, code = code})
+                            if not cache.p_index[code] then cache.p_index[code] = {} end
+                            table.insert(cache.p_index[code], text)
+                            cache.p_set[uk] = true
+                        end
+                    else cache.d_set[uk] = true end
                 end
             end
         end
@@ -70,7 +75,8 @@ local function load_all(env)
     cache.loaded = true
 end
 
-function processor(key, env)
+-- 处理器逻辑
+local function processor(key, env)
     local context, cache = env.engine.context, get_cache(env)
     if not cache.loaded then load_all(env) end
     if not context:is_composing() then return 2 end
@@ -79,23 +85,26 @@ function processor(key, env)
     if not cand then return 2 end
     local key_repr = key:repr()
 
-    -- 【置顶逻辑】
     if key_repr == cache.pin_key then
-        -- 核心逻辑：如果当前选中的词正是该编码的一简字，则直接返回，不执行写入 txt 的操作
-        if #context.input == 1 and YIJIAN[context.input] == cand.text then
-            return 1 
-        end
-
+        if #context.input == 1 and YIJIAN[context.input] == cand.text then return 1 end
         local code, uk = context.input, cand.text .. context.input
         state.pending_text, state.needs_fix = cand.text, true 
+        cache.dirty = true
         
         if cache.p_set[uk] then
             cache.p_set[uk] = nil
             for i = #cache.p_list, 1, -1 do
-                if cache.p_list[i].text == cand.text and cache.p_list[i].code == code then table.remove(cache.p_list, i); break end 
+                if cache.p_list[i].text == cand.text and cache.p_list[i].code == code then 
+                    table.remove(cache.p_list, i) 
+                    break 
+                end 
             end
             local ilist = cache.p_index[code]
-            for i = #ilist, 1, -1 do if ilist[i] == cand.text then table.remove(ilist, i); break end end
+            if ilist then
+                for i = #ilist, 1, -1 do 
+                    if ilist[i] == cand.text then table.remove(ilist, i); break end 
+                end
+            end
         else
             table.insert(cache.p_list, {text = cand.text, code = code})
             if not cache.p_index[code] then cache.p_index[code] = {} end
@@ -105,14 +114,8 @@ function processor(key, env)
         save_pinned(cache)
         context:refresh_non_confirmed_composition()
         return 1
-    
-    -- 【屏蔽逻辑】
     elseif key_repr == cache.del_key then
-        -- 一简永远不能被屏蔽
-        if #context.input == 1 and YIJIAN[context.input] == cand.text then
-            return 1 
-        end
-
+        if #context.input == 1 and YIJIAN[context.input] == cand.text then return 1 end
         local uk = cand.text .. context.input
         if cache.p_set[uk] then return 1 end 
         cache.d_set[uk] = true
@@ -124,55 +127,91 @@ function processor(key, env)
     return 2
 end
 
-function filter(input, env)
+-- 过滤器逻辑
+local function filter(input, env)
     local cache, context = get_cache(env), env.engine.context
     local code = context.input
-    local pinned_map, others, yijian_cand, count = {}, {}, nil, 0
-    local is_yijian, p_texts = (#code == 1 and YIJIAN[code]), cache.p_index[code]
+    local is_yijian = (#code == 1 and YIJIAN[code])
+    local p_texts = cache.p_index[code]
+    
+    local pinned_cands = {}
+    local others = {}
+    local yijian_cand = nil
+    local yielded_set = {}
+    local count = 0
 
+    -- 1. 预扫描及分类
     for cand in input:iter() do
-        local t, pk = cand.text, cand.text .. code
+        local t = cand.text
+        local pk = t .. code
         if not cache.d_set[pk] then
-            -- 识别一简字
-            if is_yijian and t == YIJIAN[code] then 
+            if is_yijian and t == is_yijian then
                 yijian_cand = cand
-            elseif p_texts and cache.p_set[pk] then 
-                pinned_map[pk] = cand
+            elseif cache.p_set[pk] then
+                if not pinned_cands[t] then pinned_cands[t] = cand end
             else
-                others[#others + 1] = cand
-                if #others >= cache.max_scan then break end
+                table.insert(others, cand)
             end
         end
+        if #others >= cache.max_scan then break end
     end
 
-    -- 1. 输出一简：确保它永远排在第一位
-    if yijian_cand then yield(yijian_cand); count = count + 1 end 
+    -- 2. 顺序输出
+    -- 第一：一简
+    if yijian_cand then 
+        yield(yijian_cand)
+        yielded_set[yijian_cand.text] = true
+        count = count + 1 
+    end 
     
-    -- 2. 输出其他置顶词
+    -- 第二：置顶词
     if p_texts then
         for i = 1, #p_texts do
             local t = p_texts[i]
-            local co = pinned_map[t .. code]
-            -- 排除已在一简阶段输出的重复词
-            if co and not (is_yijian and t == YIJIAN[code]) then 
-                yield(Candidate(co.type, co.start, co._end, t, cache.mark))
-                count = count + 1 
+            if not yielded_set[t] then
+                local co = pinned_cands[t]
+                if co then
+                    yield(Candidate(co.type, co.start, co._end, t, cache.mark))
+                    yielded_set[t] = true
+                    count = count + 1
+                end
             end
         end
     end
     
-    -- 3. 输出普通词及自定义短语
-    for i = 1, #others do yield(others[i]); count = count + 1 end 
-    for cand in input:iter() do yield(cand) end
+    -- 第三：普通候选
+    for i = 1, #others do
+        local cand = others[i]
+        if not yielded_set[cand.text] then
+            yield(cand)
+            yielded_set[cand.text] = true
+            count = count + 1
+        end
+    end
 
+    -- 3. 补齐剩余（流式输出，确保不丢词）
+    for cand in input:iter() do
+        if not yielded_set[cand.text] and not cache.d_set[cand.text .. code] then
+            yield(cand)
+        end
+    end
+
+    -- 4. 视觉焦点修正
     if state.needs_fix then
         local menu = context.menu
-        for i = 0, count do
+        for i = 0, count + 5 do 
             local c = menu:get_candidate_at(i)
-            if c and c.text == state.pending_text then context.selected_index = i; break end
+            if c and c.text == state.pending_text then 
+                context.selected_index = i
+                break 
+            end
         end
         state.needs_fix = false
     end
 end
 
-return { processor = processor, filter = filter }
+-- 重要：显式导出补丁中使用的函数名
+return { 
+    processor = processor, 
+    filter = filter 
+}
