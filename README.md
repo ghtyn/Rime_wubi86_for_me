@@ -15,7 +15,7 @@
 
   - 按ctrl+d，屏蔽掉当前词条，屏蔽词放在用户目录下delete.xxx.txt。
 
-  - 按删pinned.xxx.txt、delete.xxx.txt中的词条，即恢复Rime原有的状态。
+  - 删除pinned.xxx.txt、delete.xxx.txt中的词条，即恢复Rime原有的状态。
 
   - 已在lua中将一简词永久置顶，无法被屏蔽。
 
