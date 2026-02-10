@@ -1,10 +1,7 @@
 -- rime.lua
--- 1. 加载五笔增强工具箱 (wubi86_top.lua)
-local wubi86_top = require("wubi86_top")
+-- 映射五笔全能组件，require的名字对应 lua 文件夹下的文件名
+wubi86_top_processor = require("wubi86_top").processor
+wubi86_top_filter = require("wubi86_top").filter
 
--- 2. 映射组件名称（需与 patch 中的名称一致）
-pin_word_processor = wubi86_top.processor
-pin_word_filter = wubi86_top.filter
-
--- 3. 加载日期翻译器
+-- 日期翻译器 (确保你已经有 date.lua)
 date_translator = require("date")

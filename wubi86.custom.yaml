@@ -33,10 +33,10 @@ patch:
       reset: 1
 
   # --- Lua 组件挂载 ---
-  engine/processors/@before 0: "lua_processor@pin_word_processor"
+  engine/processors/@before 0: "lua_processor@wubi86_top_processor"
 
   engine/filters:
-    - "lua_filter@pin_word_filter"
+    - lua_filter@wubi86_top_filter
     - simplifier            # 简繁转换
     - simplifier@emoji      # Emoji转换
     - uniquifier            # 过滤重复项
@@ -50,17 +50,17 @@ patch:
     opencc_config: emoji.json
     inherit_comment: false
 
-  wubi_top/mark: " ᵀᴼᴾ"      # 置顶标记
-  wubi_top/max_scan: 30      # 扫描深度
+  wubi86_top:
+    mark: " ᵀᴼᴾ"                # 置顶标记
+    max_scan: 30                # 扫描深度
+    pin_key: "Control+t"        # 置顶/取消置顶快捷键
+    del_key: "Control+d"        # 屏蔽词条快捷键
 
   # --- 快捷键变量定义与绑定 ---
   key_binder/+:
     import_preset: default
-    pin_cand: "Control+t"     # 定义：置顶/取消置顶
-    unpin_cand: "Control+t"   # 定义：取消置顶
-    del_cand: "Control+d"     # 定义：屏蔽词条
     bindings:
-      - {accept: semicolon, send: 2, when: has_menu}   # 分号选二
-      - {accept: apostrophe, send: 3, when: has_menu}  # 引号选三
+      - {accept: semicolon, send: 2, when: has_menu}   # 分号选二重
+      - {accept: apostrophe, send: 3, when: has_menu}  # 引号选三重
       - {accept: bracketleft, send: Page_Up, when: paging}
       - {accept: bracketright, send: Page_Down, when: has_menu}
