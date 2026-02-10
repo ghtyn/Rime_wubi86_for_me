@@ -6,10 +6,7 @@ customization:
   rime_version: 1.11.2
 patch:
   schema_list:
-    - {schema: pinyin_simp}
     - {schema: wubi86}
-    - {schema: numbers}
+    - {schema: pinyin_simp}
   "switcher/hotkeys":
-    - "Control+grave"              #control+"~"调出输入法菜单
-
-  "menu/page_size": 3            #候选项数目
+    - "Control+grave"

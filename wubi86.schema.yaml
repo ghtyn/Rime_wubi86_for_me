@@ -45,6 +45,11 @@ engine:
     - punct_translator
     - reverse_lookup_translator
     - table_translator
+  filters:
+    - simplifier                        #将码表中繁体中文转换为简体中文
+    - simplifier@emoji                  # Emoji
+    - uniquifier  
+
 
 speller:
   delimiter: " ;'"
