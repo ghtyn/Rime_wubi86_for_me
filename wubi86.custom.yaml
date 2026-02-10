@@ -50,14 +50,17 @@ patch:
     opencc_config: emoji.json
     inherit_comment: false
 
+  wubi_top/mark: " ᵀᴼᴾ"      # 置顶标记
+  wubi_top/max_scan: 30      # 扫描深度
+
   # --- 快捷键变量定义与绑定 ---
   key_binder/+:
     import_preset: default
-    pin_cand: "Control+t"     # 定义：置顶/取消置顶 变量
-    unpin_cand: "Control+t"   # 定义：取消置顶 变量
-    del_cand: "Control+d"     # 定义：屏蔽词条 变量
+    pin_cand: "Control+t"     # 定义：置顶/取消置顶
+    unpin_cand: "Control+t"   # 定义：取消置顶
+    del_cand: "Control+d"     # 定义：屏蔽词条
     bindings:
-      - {accept: semicolon, send: 2, when: has_menu}   # 分号选二重
-      - {accept: apostrophe, send: 3, when: has_menu}  # 引号选三重
+      - {accept: semicolon, send: 2, when: has_menu}   # 分号选二
+      - {accept: apostrophe, send: 3, when: has_menu}  # 引号选三
       - {accept: bracketleft, send: Page_Up, when: paging}
       - {accept: bracketright, send: Page_Down, when: has_menu}
