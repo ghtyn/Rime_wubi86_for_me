@@ -1,6 +1,6 @@
 patch:
   # --- 基础翻译器设置 ---
-  translator/dictionary: wubi86_user
+  translator/dictionary: wubi86
   translator/enable_sentence: false
   # translator/enable_user_dict: false
   # translator/enable_completion: false
