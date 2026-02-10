@@ -16,7 +16,6 @@ local function translator(input, seg, env)
     -- 输入时间 time
     if (input == "time") then
         yield(Candidate("time", seg.start, seg._end, os.date("%H:%M"), ""))
-        yield(Candidate("time", seg.start, seg._end, os.date("%Y%m%d%H%M%S"), ""))
         yield(Candidate("time", seg.start, seg._end, os.date("%H:%M:%S"), ""))
     end
 
