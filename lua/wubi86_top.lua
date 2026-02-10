@@ -1,8 +1,3 @@
--- ============================================================================
--- 86五笔集成工具箱 (标记净化版)
--- 优化：置顶词条时强制去除系统自带的造词标记(~或*)，使置顶词下次出现时完全纯净
--- ============================================================================
-
 local schema_caches = {}
 local state = { pending_text = "", needs_fix = false }
 
@@ -173,5 +168,6 @@ function filter(input, env)
         state.needs_fix = false
     end
 end
+
 
 return { processor = processor, filter = filter }
