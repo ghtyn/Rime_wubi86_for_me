@@ -1,9 +1,10 @@
 patch:
   # --- 基础翻译器设置 ---
   translator/dictionary: wubi86
-  translator/enable_sentence: false
-  # translator/enable_user_dict: false
-  # translator/enable_completion: false
+  translator/enable_sentence: false     # 关闭自动造句
+  translator/enable_user_dict: true      # 开启原生词典
+
+
 
   # --- 拼写与自动上屏 ---
   speller/max_code_length: 4
@@ -17,7 +18,7 @@ patch:
   # --- 状态开关 ---
   switches:
     - name: ascii_mode
-      reset: 1
+      reset: 0
       states: [ 中, 西 ]
     - name: full_shape
       states: [ 半, 全 ]
