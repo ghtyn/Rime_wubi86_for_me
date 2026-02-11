@@ -43,7 +43,8 @@ patch:
     - uniquifier            # 过滤重复项
 
   engine/translators/+:
-    - "lua_translator@date_translator"
+    - lua_translator@wubi86_top_translator  
+    - lua_translator@date_translator
     - table_translator@custom_phrase
 
   # --- 自定义短句设置 ---
@@ -63,9 +64,10 @@ patch:
 
   wubi86_top:
     mark: "⠁"                # 置顶标记
-    max_scan: 30                # 扫描深度
-    pin_key: "Control+t"        # 置顶/取消置顶快捷键
-    del_key: "Control+d"        # 屏蔽词条快捷键
+    max_scan: 20                    # 扫描深度：20个
+    max_stream: 20                  # 流式输出限制：20个
+    pin_key: "Control+t"            # 置顶/取消置顶
+    del_key: "Control+d"            # 屏蔽词条
 
 
 
