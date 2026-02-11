@@ -25,13 +25,13 @@
 十月份	十月份 Oct. October
 十一月份	十一月份 Nov. November
 十二月份	十二月份 Dec. December
-周一	周一 Mon. Monday
-周二	周二 Tue. Tuesday
-周三	周三 Wed. Wednesday
-周四	周四 Thu. Thurs. Thursday
-周五	周五 Fri. Friday
-周六	周六 Sat. Saturday
-周日	周日 Sun. Sunday
+周一	周一 星期一 Mon. Monday
+周二	周二 星期二 Tue. Tuesday
+周三	周三 星期三 Wed. Wednesday
+周四	周四 星期四 Thu. Thurs. Thursday
+周五	周五 星期五 Fri. Friday
+周六	周六 星期六 Sat. Saturday
+周日	周日 星期日 Sun. Sunday
 礼拜一	礼拜一 Mon. Monday
 礼拜二	礼拜二 Tue. Tuesday
 礼拜三	礼拜三 Wed. Wednesday
