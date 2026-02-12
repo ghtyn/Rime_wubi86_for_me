@@ -1,7 +1,7 @@
-
 local schema_caches = {}
 local state = { pending_text = "", needs_fix = false }
 
+-- 一简映射（保护用）
 local YIJIAN = {
     g="一", f="地", d="在", s="要", a="工", 
     h="上", j="是", k="中", l="国", m="同", 
@@ -66,7 +66,9 @@ local function load_all(env)
                         if not cache.p_index[code] then cache.p_index[code] = {} end
                         table.insert(cache.p_index[code], text)
                         cache.p_set[text .. code] = true
-                    else cache.d_set[text .. code] = true end
+                    else
+                        cache.d_set[text] = true   -- 屏蔽按词
+                    end
                 end
             end
         end
@@ -76,21 +78,24 @@ local function load_all(env)
     cache.loaded = true
 end
 
--- 【新增部分】翻译器逻辑：将置顶文件里的词直接注入候选流
+-- translator：注入置顶词
 function translator(input, seg, env)
     local cache = get_cache(env)
     if not cache.loaded then load_all(env) end
-    
+
     local p_texts = cache.p_index[input]
     if p_texts then
         for i = 1, #p_texts do
-            -- 构造虚拟候选词，标记为 "pinned" 类型供 filter 识别
-            local cand = Candidate("pinned", seg.start, seg._end, p_texts[i], "")
-            yield(cand)
+            local text = p_texts[i]
+            if not cache.d_set[text] then        -- 屏蔽词过滤
+                local cand = Candidate("pinned", seg.start, seg._end, text, "")
+                yield(cand)
+            end
         end
     end
 end
 
+-- processor：处理置顶/屏蔽按键
 function processor(key, env)
     local context, cache = env.engine.context, get_cache(env)
     if not cache.loaded then load_all(env) end
@@ -118,10 +123,10 @@ function processor(key, env)
             table.insert(cache.p_index[code], cand.text); cache.p_set[uk] = true
         end
         save_pinned(cache); context:refresh_non_confirmed_composition(); return 1
+
     elseif key_repr == cache.del_key then
-        local uk = cand.text .. code
-        if is_yijian_word(code, cand.text) or cache.p_set[uk] then return 1 end
-        cache.d_set[uk] = true
+        if is_yijian_word(code, cand.text) then return 1 end
+        cache.d_set[cand.text] = true          -- 屏蔽词只按 text
         local f = io.open(cache.del_file, "a")
         if f then f:write(code .. "\t" .. cand.text .. "\n"); f:close() end
         context:refresh_non_confirmed_composition(); return 1
@@ -129,18 +134,18 @@ function processor(key, env)
     return 2
 end
 
+-- filter：候选流处理
 function filter(input, env)
     local cache, context = get_cache(env), env.engine.context
     local code = context.input
     local pinned_map, others, yijian_cand, count = {}, {}, nil, 0
     local is_yijian = (#code == 1 and YIJIAN[code])
     
-    -- 核心：排重。因为 translator 已经注入了置顶词，原码表可能也会出同一个词。
     local yielded_pinned = {}
 
     for cand in input:iter() do
         local t, pk = cand.text, cand.text .. code
-        if not cache.d_set[pk] then
+        if not cache.d_set[t] then             -- 屏蔽词按 text
             if is_yijian and t == YIJIAN[code] then 
                 yijian_cand = cand
             elseif cache.p_set[pk] then 
@@ -162,18 +167,18 @@ function filter(input, env)
             local t = cache.p_index[code][i]
             local pk = t .. code
             local co = pinned_map[pk]
-            -- 如果 co 存在说明是码表里有的，直接净化标记输出
-            -- 如果 co 不存在说明码表里没这个词，我们手动创建一个 Candidate 输出
             if co then
                 yield(Candidate(co.type, co.start, co._end, t, cache.mark))
             else
-                yield(Candidate("pinned", 0, #code, t, cache.mark))
+                if not cache.d_set[t] then           -- 再次屏蔽判断
+                    yield(Candidate("pinned", 0, #code, t, cache.mark))
+                end
             end
             count = count + 1
         end
     end
     
-    for i = 1, #others do yield(others[i]); count = count + 1 end 
+    for i = 1, #others do yield(others[i]); count = count + 1 end
     for cand in input:iter() do yield(cand) end
 
     if state.needs_fix then

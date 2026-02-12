@@ -1,81 +1,80 @@
+# 补丁：对 wubi86.schema.yaml 的功能进行追加或覆盖
 patch:
-  # --- 基础翻译器设置 ---
-  translator/dictionary: wubi86
-  translator/enable_sentence: false     # 关闭自动造句
-  translator/enable_user_dict: true      # 开启原生词典
+  # --- 翻译器与词库设置 ---
+  translator/dictionary: wubi86        # 设定使用的词库文件名为 wubi86
+  translator/enable_sentence: false    # 关闭自动造句（五笔通常习惯码定字出，不建议开自动连词）
+  translator/enable_user_dict: true    # 开启用户词典，记录输入习惯并调频
 
+  # --- 拼写器设置 ---
+  speller/max_code_length: 4           # 最大码长为 4 码
+  speller/auto_select: true            # 四码唯一或满四码时自动上屏
 
-
-  # --- 拼写与自动上屏 ---
-  speller/max_code_length: 4
-  speller/auto_select: true
-
-  # --- 简繁转换 ---
+  # --- 简繁转换设置 ---
   simplifier:
-    opencc_config: s2t.json
-    option_name: zh_trad
+    opencc_config: s2t.json            # 使用 OpenCC 进行简转繁（s2t: Simplified to Traditional）
+    option_name: zh_trad               # 转换开关的内部名称
 
-  # --- 状态开关 ---
+  # --- 输入法状态开关 ---
   switches:
-    - name: ascii_mode
-      reset: 0
+    - name: ascii_mode                 # 中英文切换
+      reset: 0                         # 默认状态：0 为中文，1 为英文
       states: [ 中, 西 ]
-    - name: full_shape
+    - name: full_shape                 # 全角/半角切换
       states: [ 半, 全 ]
-    - name: extended_charset
+    - name: extended_charset           # 字符集扩展（如支持生僻字）
       states: [ 常, 增 ]
-    - name: ascii_punct
+    - name: ascii_punct                # 中英文标点切换
       states: [ 。, ． ]
-    - name: zh_trad
-      reset: 0
+    - name: zh_trad                    # 繁体中文切换开关
+      reset: 0                         # 默认不开启繁体
       states: [ 汉, 漢 ]
-    - name: emoji
+    - name: emoji                      # Emoji 开关
       states: [ 🈚️, 🈶 ]
-      reset: 1
+      reset: 1                         # 默认开启 Emoji
 
-  # --- Lua 组件挂载 ---
-  engine/processors/@before 0: "lua_processor@wubi86_top_processor"
+  # --- 引擎组件设置 ---
+  # 在处理器列表的最前面插入 Lua 处理器（用于实现特定的置顶逻辑）
+  engine/processors/@before 0: lua_processor@wubi86_top_processor
 
+  # 过滤器列表：处理候选词的显示效果
   engine/filters:
-    - simplifier            # 简繁转换
-    - lua_filter@wubi86_top_filter
-    - simplifier@emoji      # Emoji转换
-    - uniquifier            # 过滤重复项
+    - simplifier                       # 简繁转换滤镜
+    - lua_filter@wubi86_top_filter     # Lua 置顶滤镜（配合 Lua 脚本使用）
+    - simplifier@emoji                 # Emoji 转换滤镜
+    - uniquifier                       # 去重滤镜（防止多个来源出现重复词）
 
+  # 翻译器追加：在原有翻译器基础上增加功能
   engine/translators/+:
-    - lua_translator@wubi86_top_translator  
-    - lua_translator@date_translator
-    - table_translator@custom_phrase
+    - lua_translator@date_translator  # 动态日期翻译器（如输入 date 输出当前日期）
+    - table_translator@custom_phrase   # 自定义短语翻译器
 
-  # --- 自定义短句设置 ---
+  # --- 自定义短语详细配置 ---
   custom_phrase:
-    dictionary: ""
-    user_dict: custom_phrase  # 对应文件名（不含扩展名）
-    db_class: stabledb
-    enable_completion: false
-    enable_sentence: false
-    initial_quality: 1000     # 给一个较高的基础权重
+    dictionary: ""                     # 不使用主词库
+    user_dict: custom_phrase           # 使用名为 custom_phrase.txt 的文件作为短语库
+    db_class: stabledb                 # 数据库格式
+    enable_completion: false           # 不提示未输入完整的短语
+    enable_sentence: false             # 自定义短语不参与造句
+    initial_quality: 1000              # 初始权重（设为 1000 确保排在候选项首位）
 
-  # --- Emoji 设置 ---
+  # --- Emoji 滤镜配置 ---
   emoji:
     option_name: emoji
-    opencc_config: emoji.json
-    inherit_comment: false
+    opencc_config: emoji.json          # 对应的 Emoji 映射配置文件
+    inherit_comment: false             # 不继承原词条的注释
 
+  # --- 五笔置顶功能配置 ---
   wubi86_top:
-    mark: "⠁"                # 置顶标记
-    max_scan: 20                    # 扫描深度：20个
-    max_stream: 20                  # 流式输出限制：20个
-    pin_key: "Control+t"            # 置顶/取消置顶
-    del_key: "Control+d"            # 屏蔽词条
+    mark: "⠁"                          # 置顶条目的特殊标记
+    max_scan: 20                       # 最大扫描候选词数量
+    pin_key: "Control+t"               # 置顶快捷键：Ctrl + t
+    del_key: "Control+d"               # 删除置顶快捷键：Ctrl + d
 
-
-
-  # --- 快捷键变量定义与绑定 ---
+  # --- 按键绑定设置 ---
   key_binder/+:
-    import_preset: default
+    import_preset: default             # 继承默认按键方案
     bindings:
-      - {accept: semicolon, send: 2, when: has_menu}   # 分号选二重
-      - {accept: apostrophe, send: 3, when: has_menu}  # 引号选三重
-      - {accept: bracketleft, send: Page_Up, when: paging}
-      - {accept: bracketright, send: Page_Down, when: has_menu}
+      - {accept: semicolon, send: 2, when: has_menu}   # 分号选择第 2 候选词
+      - {accept: apostrophe, send: 3, when: has_menu}  # 单引号选择第 3 候选词
+      - {accept: bracketleft, send: Page_Up, when: paging}      # [ 键向上翻页
+      - {accept: bracketright, send: Page_Down, when: has_menu} # ] 键向下翻页
