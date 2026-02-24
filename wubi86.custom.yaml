@@ -38,8 +38,8 @@ patch:
 
   # 过滤器列表：处理候选词的显示效果
   engine/filters:
-    - simplifier                       # 简繁转换滤镜
     - lua_filter@wubi86_top_filter     # Lua 置顶滤镜（配合 Lua 脚本使用）
+    - simplifier                       # 简繁转换滤镜
     - simplifier@emoji                 # Emoji 转换滤镜
     - uniquifier                       # 去重滤镜（防止多个来源出现重复词）
 
