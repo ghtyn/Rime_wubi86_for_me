@@ -20,9 +20,9 @@ local function calc_dynamic_scan(code_len, base)
     if code_len <= 1 then
         return 0  -- 一简不扫描原始候选
     elseif code_len == 2 then
-        return base * 2
+        return base * 1.5
     elseif code_len == 3 then
-        return math.floor(base * 1.5)
+        return math.floor(base * 1)
     elseif code_len == 4 then
         return math.min(base, 10)
     else
@@ -39,6 +39,11 @@ local function get_cache(env)
         local config = env.engine.schema.config
         local u_dir  = rime_api.get_user_data_dir()
 
+        -- 1. 去除路径末尾可能存在的分隔符（/ 或 \）
+        u_dir = u_dir:gsub("[/\\]$", "")
+        -- 2. 获取系统路径分隔符（Windows 为 \，Unix 为 /）
+        local sep = package.config:sub(1, 1)
+
         schema_caches[sid] = {
             p_list = {},
             p_index = {},
@@ -50,8 +55,9 @@ local function get_cache(env)
             pin_key  = config:get_string("wubi86_top/pin_key") or "Control+t",
             del_key  = config:get_string("wubi86_top/del_key") or "Control+d",
 
-            pin_file = u_dir .. "/pinned_"  .. sid .. ".txt",
-            del_file = u_dir .. "/deleted_" .. sid .. ".txt",
+            -- 3. 用分隔符安全拼接完整路径
+            pin_file = u_dir .. sep .. "pinned_"  .. sid .. ".txt",
+            del_file = u_dir .. sep .. "deleted_" .. sid .. ".txt",
 
             dirty = false,
             deleted_dirty = false,
