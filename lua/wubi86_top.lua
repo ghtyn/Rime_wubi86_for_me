@@ -31,9 +31,10 @@ local function calc_dynamic_scan(code_len, base)
 end
 
 -- 新增：判断是否为符号类输入（核心逻辑）
--- 匹配 / 开头的符号触发码（如 /sx、/fh 等），可按需扩展
+-- 【关键修改】：新增 z 开头的判定（适配z键反查）
 local function is_symbol_input(code)
-    if code:sub(1,1) == "/" then
+    -- 匹配 / 开头 或 z 开头的输入（反查场景）
+    if code:sub(1,1) == "/" or code:sub(1,1) == "z" then
         return true
     end
     return false
@@ -233,7 +234,7 @@ function filter(input, env)
     local code = context.input
     local code_len = #code
 
-    -- 符号输入跳过扫描限制
+    -- 符号输入（含z开头反查）跳过扫描限制
     local dynamic_scan = is_symbol_input(code) and math.huge or calc_dynamic_scan(code_len, cache.max_scan)
 
     local yielded = {}
@@ -257,14 +258,14 @@ function filter(input, env)
         end
     end
 
-    -- 原始候选
+    -- 原始候选（z开头反查不限制数量）
     local effective = 0
     for cand in input:iter() do
         local t = cand.text
         if not cache.d_set[t] and not yielded[t] then
             yield(cand)
             yielded[t]=true
-            -- 仅非符号输入统计扫描数
+            -- 仅非符号/非z开头输入统计扫描数
             if not is_symbol_input(code) then
                 effective = effective + 1
                 if dynamic_scan > 0 and effective >= dynamic_scan then
